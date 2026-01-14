@@ -1,31 +1,40 @@
-name: Auto Build Test
+name: Sync Upstream HsMod
 
 on:
-  push:
-    branches: [ "bepinex5" ]
-  pull_request:
-  merge_group:
+  schedule:
+    - cron: "*/30 * * * *"   # 每 30 分钟检查一次
+  workflow_dispatch:        # 允许手动点 Run
+  repository_dispatch:      # 以后可高级触发
+
+permissions:
+  contents: write
 
 jobs:
-  build:
-    runs-on: windows-latest
+  sync:
+    runs-on: ubuntu-latest
 
     steps:
-    # Checkout the repository
-    - uses: actions/checkout@v4
+    - name: Checkout repo
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
-    # Setup .NET SDK
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.x
-    
-    # Restore dependencies
-    - name: Restore dependencies
-      run: dotnet restore --locked-mode
-    
-    # Build the project
-    - name: Build HsMod
-      run: dotnet build --configuration Release --no-restore
+
+    - name: Set git identity
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions@users.noreply.github.com"
+
+    - name: Add upstream
+      run: |
+        git remote add upstream https://github.com/Pik-4/HsMod.git || true
+
+    - name: Fetch upstream
+      run: git fetch upstream
+
+    - name: Sync bepinex5
+      run: |
+        git checkout bepinex5
+        git merge upstream/bepinex5 --no-edit || exit 0
+
+    - name: Push changes
+      run: git push origin bepinex5
