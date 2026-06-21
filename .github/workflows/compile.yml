@@ -1,0 +1,33 @@
+name: Compile HsMod
+
+on:
+  workflow_dispatch: # 允许你手动点击按钮触发编译
+
+jobs:
+  build:
+    runs-on: windows-2022 # 使用自带 MSBuild 的 Windows 云服务器
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Navigate to Workspace
+      run: cd $Env:GITHUB_WORKSPACE
+
+    - name: Restore NuGet Packages
+      run: nuget restore ${{ github.event.repository.name }}.sln
+      continue-on-error: true # 防止没有 nuget 时报错
+
+    - name: Build with MSBuild
+      # 加上 /p:PostBuildEvent= 是为了跳过你项目里自带的 install.bat 自动安装脚本，防止云端找不到游戏路径报错
+      run: msbuild /p:Configuration=Release /p:PostBuildEvent=
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: HsMod-Compiled-DLL
+        path: |
+          **/Release/HsMod.dll
